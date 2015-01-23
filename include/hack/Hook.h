@@ -7,7 +7,7 @@ private:
 	JNIEnv* mEnv;
 	void* mFunc;
 	Method* mOrigMethod;
-	Method* mNewMethod;
+	Method* mBakedMethod;
 	//char mReturnShorty;
 	jclass mClass;
 	char* mMethodSig;
@@ -18,11 +18,12 @@ public:
 	 * @param[in] 
 	 * @param[in] 
 	 * @param[in] 
+	 * @param[in] 
 	 */
-	JavaHook(JNIEnv* env, const char* classDesc, const char* methodName, const char* methodSig);
+	JavaHook(JNIEnv* env, const char* classDesc, const char* methodName, const char* methodSig, void* func);
 	~JavaHook();
 
-	void Hook(void* func);
+	void Hook();
 
 	/**
 	 * @param[in] 
@@ -50,6 +51,8 @@ public:
 
 	jdouble CallOldDoubleMethod(jobject thiz, ...);
 
+	jobject CallOldObjectMethod(jobject thiz, ...);
+
 	//////////////////////////////////////////////////////////////////////////
 
 	void CallOldStaticVoidMethod(...);
@@ -69,6 +72,8 @@ public:
 	jfloat CallOldStaticFloatMethod(...);
 
 	jdouble CallOldStaticDoubleMethod(...);
+
+	jobject CallOldStaticObjectMethod(...);
 
 private:
 	/**

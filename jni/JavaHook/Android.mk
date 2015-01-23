@@ -4,8 +4,8 @@ include $(CLEAR_VARS)
 
 SO_LIB_PATH := $(LOCAL_PATH)/../../lib
 
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../include
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/../include/JavaHook
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/../../include
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../include/JavaHook
 
 LOCAL_LDLIBS += -llog
 LOCAL_LDFLAGS += -L$(SO_LIB_PATH) -landroid_runtime_arm -ldvm_arm

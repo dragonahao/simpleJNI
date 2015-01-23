@@ -41,7 +41,7 @@ struct __SubstrateMemory {
     {
     }
 };
-
+#include <unistd.h>
 extern "C" SubstrateMemoryRef SubstrateMemoryCreate(SubstrateAllocatorRef allocator, SubstrateProcessRef process, void *data, size_t size) {
     if (allocator != NULL) {
         MSLog(MSLogLevelError, "MS:Error:allocator != NULL", 1);
