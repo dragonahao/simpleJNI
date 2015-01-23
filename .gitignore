@@ -1,6 +1,12 @@
 /libs/
 /obj/
-/samples/AndroidJNIJavaSample/obj/
-/samples/AndroidJNIJavaSample/libs/
-/samples/AndroidJNIJavaSample/target/
-/samples/AndroidJNIJavaSample/bin/
+
+/samples/SimpleJNIJNIJavaSample/obj/
+/samples/SimpleJNIJNIJavaSample/libs/
+/samples/SimpleJNIJNIJavaSample/target/
+/samples/SimpleJNIJNIJavaSample/bin/
+
+/samples/SimpleJNIHookSmaple/obj/
+/samples/SimpleJNIHookSmaple/libs/
+/samples/SimpleJNIHookSmaple/target/
+/samples/SimpleJNIHookSmaple/bin/
