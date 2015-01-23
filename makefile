@@ -2,14 +2,14 @@ main: build copy-libs
 
 clean:
 	@echo "################ clean ################"
-	ndk-build clean
+	ndk-build --directory=./src clean
 
 build:
 	@echo "################ build ################"
-	ndk-build
+	ndk-build --directory=./src
 
 rebuild: clean build copy-libs
 
 copy-libs:
 	@echo "################ copy-libs ################"
-	cp -vf ./obj/local/armeabi/*.a ./lib
+	cp -vf ./src/obj/local/armeabi/*.a ./lib
