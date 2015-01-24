@@ -5,7 +5,7 @@
 
 FILE * (*oldfopen)(const char * fileName, const char * mode) = NULL;
 
-FILE * __cdecl myfopen(const char * fileName, const char * mode) {
+FILE * myfopen(const char * fileName, const char * mode) {
 	MY_LOG_INFO("打开文件：%s，模式：%s", fileName, mode);
 	return oldfopen(fileName, mode);
 }
@@ -30,8 +30,9 @@ void hooks(JNIEnv *env, jobject thiz) {
  * @param[in] fpath 文件路径。
  */
 void call_fopen(JNIEnv *env, jobject thiz, jstring fpath) {
-	JString jpath;
-	FILE* pf = fopen(, "r");
+	jstring_ j_fpath;
+	j_fpath.SetString(fpath);
+	FILE* pf = fopen(j_fpath.GetString(), "r");
 	if (NULL == pf) {
 		MY_LOG_INFO("打开文件失败：%s。");
 	} else {
@@ -42,8 +43,8 @@ void call_fopen(JNIEnv *env, jobject thiz, jstring fpath) {
 const char* g_ClassName = "com/buwai/androidjnilibrarysample/MainActivity";
 
 static const JNINativeMethod gMethods[] = {
-	{ "hooks", "()V", (void*)hooks() }, 
-	{ "call_fopen", "(Ljava/lang/String;)V", (void*)call_fopen() }
+	{ "hooks", "()V", (void*)hooks }, 
+	{ "call_fopen", "(Ljava/lang/String;)V", (void*)call_fopen }
 };
 
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
