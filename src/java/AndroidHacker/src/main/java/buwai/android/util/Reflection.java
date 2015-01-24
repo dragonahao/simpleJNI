@@ -1,4 +1,4 @@
-package buwai.javahacker;
+package buwai.android.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
