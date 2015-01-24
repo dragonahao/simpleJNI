@@ -11,6 +11,8 @@ LOCAL_SRC_FILES := ./JavaBase.cpp \
 				   ./JavaIO.cpp \
 				   ./JNIReflect.cpp \
 				   ./AndroidUtil.cpp \
-				   ./AndroidContent.cpp
+				   ./AndroidContent.cpp \
+				   ./jstring_.cpp \
+				   ./JavaException.cpp
 
 include $(BUILD_STATIC_LIBRARY)

@@ -38,14 +38,14 @@ void JNICALL JNI_DexFile_init2(JNIEnv *env, jobject thiz, jstring fileName) {
 JavaHook* g_HookDexFileInit3 = NULL;
 void JNICALL JNI_DexFile_init3(JNIEnv *env, jobject thiz, jstring sourceName,
 							   jstring outputName, jint flags) {
-								   MY_LOG_INFO("[*] enter JNI_DexFile_init3");
+	MY_LOG_INFO("[*] enter JNI_DexFile_init3");
 
-								   jboolean isCopy;
-								   const char *strSourceName = env->GetStringUTFChars(sourceName, &isCopy);
-								   MY_LOG_INFO("[*] DexFile sourceName=%s", strSourceName);
-								   env->ReleaseStringUTFChars(sourceName, strSourceName);
+	jboolean isCopy;
+	const char *strSourceName = env->GetStringUTFChars(sourceName, &isCopy);
+	MY_LOG_INFO("[*] DexFile sourceName=%s", strSourceName);
+	env->ReleaseStringUTFChars(sourceName, strSourceName);
 
-								   g_HookDexFileInit3->CallOldVoidMethod(thiz, sourceName, outputName, flags);
+	g_HookDexFileInit3->CallOldVoidMethod(thiz, sourceName, outputName, flags);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -112,8 +112,8 @@ void JNICALL JNI_ZipFile_init2(JNIEnv *env, jobject thiz, jstring name) {
 JavaHook* g_HookZipFileInit3 = NULL;
 void JNICALL JNI_ZipFile_init3(JNIEnv *env, jobject thiz, jstring file,
 							   jint mode) {
-								   MY_LOG_INFO("[*] enter JNI_ZipFile_init3");
-								   g_HookZipFileInit3->CallOldVoidMethod(thiz, file, mode);
+   MY_LOG_INFO("[*] enter JNI_ZipFile_init3");
+   g_HookZipFileInit3->CallOldVoidMethod(thiz, file, mode);
 }
 
 //////////////////////////////////////////////////////////////////////////

@@ -22,7 +22,7 @@ MY_LOG_TAG := \"AndroidDexUnpack\"
 LOCAL_CFLAGS += -DMY_LOG_TAG=$(MY_LOG_TAG)
 
 # Á´½Ó¾²Ì¬¿â¡£
-LOCAL_LDLIBS := -llog -L$(SIMPLE_LIBRARIES) -lHack -lJNIJava
+LOCAL_LDLIBS := -llog -L$(SIMPLE_LIBRARIES) -lHack -lJNIJava -lSubstrate
 
 # Á´½Ó¶¯Ì¬¿â¡£
 LOCAL_LDFLAGS += -L$(SIMPLE_LIBRARIES) -landroid_runtime_arm -ldvm_arm
