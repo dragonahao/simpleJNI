@@ -147,8 +147,8 @@ static void hs_clearcache(u4* begin, u4* end) {
 
 //////////////////////////////////////////////////////////////////////////
 
-JavaHook::JavaHook(JNIEnv* env, const char* classDesc, const char* methodName, const char* methodSig, void* func)
-	: mEnv(env), mFunc(func), mBakedMethod(NULL)
+JavaHook::JavaHook(JNIEnv* env, const char* classDesc, const char* methodName, const char* methodSig)
+	: mEnv(env), mFunc(NULL), mBakedMethod(NULL)
 {
 	// 获得返回值的短表示方式。
 // 	char* tmp = strrchr(methodSig, ')') + 1;
@@ -175,6 +175,11 @@ JavaHook::~JavaHook() {
 	if (NULL != mMethodSig) {
 		free(mMethodSig);
 	}
+}
+
+// 设置Hook方法。
+void JavaHook::SetHookMethod(void* func) {
+	mFunc = func;
 }
 
 void JavaHook::Hook() {

@@ -20,8 +20,14 @@ public:
 	 * @param[in] 
 	 * @param[in] 
 	 */
-	JavaHook(JNIEnv* env, const char* classDesc, const char* methodName, const char* methodSig, void* func);
+	JavaHook(JNIEnv* env, const char* classDesc, const char* methodName, const char* methodSig);
 	~JavaHook();
+	
+	/**
+	 * 设置Hook方法。
+	 * @param[in] 函数指针。
+	 */
+	void SetHookMethod(void* func);
 
 	void Hook();
 

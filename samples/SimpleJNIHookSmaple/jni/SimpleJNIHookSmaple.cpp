@@ -1,4 +1,4 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "MyJavaHook.h"
 
 #define HOOK_FUNCTION(funName) MSHookFunction((void*) funName, (void*) my##funName, (void**) (&old##funName))
@@ -6,11 +6,11 @@
 FILE * (*oldfopen)(const char * fileName, const char * mode) = NULL;
 
 FILE * myfopen(const char * fileName, const char * mode) {
-	MY_LOG_INFO("´ò¿ªÎÄ¼ş£º%s£¬Ä£Ê½£º%s", fileName, mode);
+	MY_LOG_INFO("[*] native hook - fopenå‡½æ•°ï¼šæ–‡ä»¶è·¯å¾„ï¼š%sï¼Œæ¨¡å¼ï¼š%s", fileName, mode);
 	return oldfopen(fileName, mode);
 }
 
-// Hook Native²ã¡£
+// Hook Nativeå±‚ã€‚
 void nativeHooks() {
 	MY_LOG_INFO("#---------- Start nativeHooks ---------------#");
  	HOOK_FUNCTION(fopen);
@@ -18,7 +18,7 @@ void nativeHooks() {
 }
 
 /**
- * hook¡£
+ * hookã€‚
  */
 void hooks(JNIEnv *env, jobject thiz) {
 	MyJavaHook();
@@ -26,21 +26,21 @@ void hooks(JNIEnv *env, jobject thiz) {
 }
 
 /**
- * µ÷ÓÃfopen¡£
- * @param[in] fpath ÎÄ¼şÂ·¾¶¡£
+ * è°ƒç”¨fopenã€‚
+ * @param[in] fpath æ–‡ä»¶è·¯å¾„ã€‚
  */
 void call_fopen(JNIEnv *env, jobject thiz, jstring fpath) {
 	jstring_ j_fpath;
 	j_fpath.SetString(fpath);
 	FILE* pf = fopen(j_fpath.GetString(), "r");
 	if (NULL == pf) {
-		MY_LOG_INFO("´ò¿ªÎÄ¼şÊ§°Ü£º%s¡£");
+		MY_LOG_INFO("æ‰“å¼€æ–‡ä»¶å¤±è´¥ï¼š%sã€‚");
 	} else {
 		fclose(pf);
 	}
 }
 
-const char* g_ClassName = "com/buwai/androidjnilibrarysample/MainActivity";
+const char* g_ClassName = "buwai/sample/simplejni/hook/MainActivity";
 
 static const JNINativeMethod gMethods[] = {
 	{ "hooks", "()V", (void*)hooks }, 

@@ -9,7 +9,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<platform.version>4.0</platform.version>
+		<platform.version>4.4.2</platform.version>
 	</properties>
 
 	<dependencies>
@@ -22,6 +22,11 @@
 	</dependencies>
 
 	<build>
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+		</resources>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -31,6 +36,30 @@
 					<target>1.7</target>
 					<encoding>${project.build.sourceEncoding}</encoding>
 				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.7</version>
+				<executions>
+					<execution>
+						<id>jar-to-dex</id>
+						<phase>package</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target name="JarToDex">
+								<echo message="jar to dex ......"/>
+								<!-- 如果是linux，dx.bat要改成dx -->
+								<exec dir="${build.directory}" executable="dx.bat" failonerror="true">
+									<arg line="--dex --output=${artifactId}-dex-${version}.jar ${project.build.finalName}.${packaging}"/>
+								</exec>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

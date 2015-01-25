@@ -1,4 +1,6 @@
-package buwai.android.util;
+package buwai.android.hacker;
+
+import android.app.Activity;
 
 public class Test {
 
