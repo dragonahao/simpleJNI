@@ -1,7 +1,8 @@
 simpleJNI
 =========
 
-[TOC]
+* This will become a table of contents (this text will be scraped).
+{:toc}
 
 介绍
 =========
