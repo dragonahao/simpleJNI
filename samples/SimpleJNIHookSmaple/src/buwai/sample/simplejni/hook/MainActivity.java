@@ -6,12 +6,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import dalvik.system.DexClassLoader;
-import dalvik.system.DexFile;
 import android.app.Activity;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Bundle;
+import dalvik.system.DexClassLoader;
 
 public class MainActivity extends Activity {
 

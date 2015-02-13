@@ -9,3 +9,8 @@
 /samples/SimpleJNIHookSmaple/libs/
 /samples/SimpleJNIHookSmaple/target/
 /samples/SimpleJNIHookSmaple/bin/
+
+/samples/SimpleJNIInjectSmaple/obj/
+/samples/SimpleJNIInjectSmaple/libs/
+/samples/SimpleJNIInjectSmaple/target/
+/samples/SimpleJNIInjectSmaple/bin/

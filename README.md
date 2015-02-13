@@ -1,9 +1,6 @@
 simpleJNI
 =========
 
-* This will become a table of contents (this text will be scraped).
-{:toc}
-
 介绍
 =========
 为了简化native层的编程：方便C++代码调用Java方法、Hack代码。  

@@ -5,7 +5,7 @@
 // 文件。
 
 // 拷贝文件。
-bool CopyFile(IN FILE* src, IN FILE* dest) {
+bool CopyFile(FILE* src, FILE* dest) {
 	size_t rc;
 	unsigned char buf[BUF_SIZE_4096];
 
@@ -25,7 +25,7 @@ bool CopyFile(IN FILE* src, IN FILE* dest) {
 }
 
 // 拷贝文件。
-bool CopyFile(IN const char* srcFile, IN const char* outputFile) {
+bool CopyFile(const char* srcFile, const char* outputFile) {
 	FILE *in_file = NULL, *out_file = NULL;
 	bool bRet = false;
 
@@ -48,7 +48,7 @@ bool CopyFile(IN const char* srcFile, IN const char* outputFile) {
 }
 
 // 通过文件描述符获得文件名。
-char* GetFilePath(IN const int fd) {
+char* GetFilePath(const int fd) {
 	if (0 >= fd) {
 		return NULL;
 	}
@@ -65,7 +65,7 @@ char* GetFilePath(IN const int fd) {
 }
 
 // 获得文件长度。
-ssize_t GetFileSize(IN const int fd) {
+ssize_t GetFileSize(const int fd) {
 	off_t start, end;
 
 	start = lseek(fd, 0L, SEEK_CUR);
@@ -85,7 +85,7 @@ ssize_t GetFileSize(IN const int fd) {
 }
 
 // 获得文件长度。
-long GetFileSize(IN const char* filePath) {
+long GetFileSize(const char* filePath) {
 	FILE* fi = fopen(filePath, "r");
 	if (NULL == fi) {
 		return -1;
@@ -96,7 +96,7 @@ long GetFileSize(IN const char* filePath) {
 }
 
 // 获得文件长度。
-long GetFileSize(IN FILE* fi) {
+long GetFileSize(FILE* fi) {
 	int start, end;
 	long filesize;
 
@@ -111,7 +111,7 @@ long GetFileSize(IN FILE* fi) {
 // 目录。
 
 // 目录是否存在。
-bool IsDirExist(IN const char* path) {
+bool IsDirExist(const char* path) {
 	struct stat fileStat;
 	if ((stat(path, &fileStat) == 0) && S_ISDIR(fileStat.st_mode)) {
 		return true;

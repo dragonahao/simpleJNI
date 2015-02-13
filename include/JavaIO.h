@@ -9,7 +9,7 @@
 class JFile : public JFileSuper
 {
 public:
-	void New(IN JString& path);
+	void New(JString& path);
 
 	jboolean mkdir();
 

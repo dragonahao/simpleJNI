@@ -13,7 +13,7 @@
 // }
 
 //////////////////////////////////////////////////////////////////////////
-// 轻量级智能指针(Light Smart Point)。
+// 轻量级智能指针(Light Smart Point)。用于在堆中分配的内存。
 // 错误用法：
 // lsp<int> a(1);
 // lsp<int> b = a.get();
@@ -22,7 +22,7 @@ template <typename T>
 class lsp
 {
 public:
-	inline lsp() : m_ptr(0) { }
+	inline lsp() : m_ptr(0), mpCount(NULL) { }
 
 	lsp(T* other);
 	lsp(const lsp<T>& other);
