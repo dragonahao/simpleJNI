@@ -17,9 +17,7 @@ LOCAL_C_INCLUDES += $(INCLUDE_PATH)
 
 LOCAL_SRC_FILES := injected.cpp
 
-# 设置target，详情请看nativelog.h文件。
-MY_LOG_TAG := \"debug\"
-LOCAL_CFLAGS += -DMY_LOG_TAG=$(MY_LOG_TAG)
+LOCAL_LDLIBS := -llog
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -41,6 +39,9 @@ LOCAL_CFLAGS += -DMY_LOG_TAG=$(MY_LOG_TAG)
 
 # 链接静态库。
 LOCAL_LDLIBS := -llog -L$(SIMPLE_LIBRARIES) -lHack -lBaseUtils -lJNIJava
+
+#LOCAL_LDFLAGS = $(NDK_HOME)/platforms/$(ANDROID_SDK_VERSION)/$(ARCHETECTURE_TYPE)/usr/lib/libstdc++.a
+#LOCAL_CPPFLAGS += -fexceptions -lstdc++
 
 # 链接动态库。
 LOCAL_LDFLAGS += -L$(SIMPLE_LIBRARIES) -landroid_runtime_arm -ldvm_arm

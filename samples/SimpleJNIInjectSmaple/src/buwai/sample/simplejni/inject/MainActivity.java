@@ -2,6 +2,7 @@ package buwai.sample.simplejni.inject;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,10 +23,12 @@ public class MainActivity extends Activity {
 
 	private final static String TAG = "debug";
 	private final static String EXE_NAME = "myinject";
+	private final static String SO_INJECTED = "libinjected.so";
 
 	private EditText mtxtPid;
 	private Button mbtnInject;
 	private String mExePath;
+	private String mSoPath;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -39,6 +42,10 @@ public class MainActivity extends Activity {
 		mbtnInject = (Button) findViewById(R.id.btnInject);
 		
 		mExePath = getFilesDir() + "/" + EXE_NAME;
+		mSoPath = "/data/data/" + getPackageName() + "/lib/" + SO_INJECTED;
+		if (false == new File(mSoPath).exists()) {
+			Log.w(TAG, "文件不存在：" + mSoPath);
+		}
 		
 		try {
 			// 将注入程序从assets目录中拷贝出来。
@@ -58,7 +65,7 @@ public class MainActivity extends Activity {
 					Toast.makeText(MainActivity.this, "请输入PID", Toast.LENGTH_SHORT).show();
 				} else {
 					// 注入。
-					RootCommand(new String[] {mExePath, pid});
+					RootCommand(new String[] {mExePath, pid, mSoPath});
 				}
 			}
 		});
