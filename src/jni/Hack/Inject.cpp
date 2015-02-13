@@ -4,6 +4,7 @@
 
 bool Inject(pid_t pid, const char* soPath) {
 	RemoteProcess remoteProcess(pid);
-
+	remoteProcess.Attach();
+	remoteProcess.Detach();
 	return false;
 }

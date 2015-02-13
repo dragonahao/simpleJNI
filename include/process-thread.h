@@ -139,7 +139,7 @@ public:
 	 * 暂停进程。
 	 * @return true: 暂停成功。false: 暂停失败。
 	 */
-	bool Pause();
+	//bool Pause();
 
 	/**
 	 * 读取远程进程中的数据。
@@ -230,7 +230,7 @@ public:
 	 * 获得远程错误号。
 	 * @return 返回错误号。
 	 */
-	int remote_errno();
+	//int remote_errno();
 
 	/**
 	 * 远程调用dlopen函数。
@@ -245,7 +245,7 @@ public:
 	 * @param[in] handle 动态库句柄。
 	 * @return 如果调用成功，则返回0。调用失败，则返回非零值，是一个错误号。
 	 */
-	int remote_dlclose (void *handle);
+	//int remote_dlclose (void *handle);
 
 	/**
 	 * 同步创建远程线程。

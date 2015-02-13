@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <string>
+#include <SmartPoint.h>
 
 class ModuleList {
 public:
@@ -9,12 +9,12 @@ public:
 		unsigned long start;
 		unsigned long end;
 		//PagePermissions pagePerms;
-		std::string pagePerms;
+		lsp<char> pagePerms;
 		unsigned long offset;
 		//unsigned long dev;
-		std::string dev;
+		lsp<char> dev;
 		size_t inode;
-		std::string name;
+		lsp<char> name;
 
 		Entry();
 
@@ -67,7 +67,7 @@ protected:
  * @param[in] addr 地址。
  * @return 返回模块名。
  */
-std::string GetModuleName (pid_t pid, void* addr);
+lsp<char> GetModuleName (pid_t pid, void* addr);
 
 /**
  * 通过模块名获得模块基址。

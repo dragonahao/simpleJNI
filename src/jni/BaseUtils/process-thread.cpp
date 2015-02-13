@@ -125,19 +125,19 @@ void* GetRemoteAddress(pid_t target_pid, void* local_addr) {
 	//MY_LOG_INFO("GetRemoteAddress进入。");
 	void* local_base, *remote_base;
 
-	std::string moduleName = GetModuleName(-1, local_addr);
-	if (0 == moduleName.c_str()) {
+	lsp<char> moduleName = GetModuleName(-1, local_addr);
+	if (NULL == moduleName.get()) {
 		MY_LOG_WARNING("[-] GetRemoteAddress(pid_t, void*) - 获得模块名失败。");
 		return NULL;
 	}
 
 	// 获得模块在当前进程中的基址。
-	if (NULL == (local_base = GetModuleBase(-1, moduleName.c_str()))) {
+	if (NULL == (local_base = GetModuleBase(-1, moduleName.get()))) {
 		MY_LOG_WARNING("[-] GetRemoteAddress(pid_t, void*) - 获得模块在当前进程中的基址失败。");
 		return NULL;
 	}
 	// 获得模块在远程进程中的基址。
-	if (NULL == (remote_base = GetModuleBase(target_pid, moduleName.c_str()))) {
+	if (NULL == (remote_base = GetModuleBase(target_pid, moduleName.get()))) {
 		MY_LOG_WARNING("[-] GetRemoteAddress(pid_t, void*) - 获得模块在远程进程中的基址失败。");
 		return NULL;
 	}
@@ -260,6 +260,8 @@ RemoteProcess::RemoteProcess(pid_t pid)
 	ZeroMemory(&mOrigReg, sizeof(struct pt_regs));
 }
 
+RemoteProcess::~RemoteProcess(){}
+
 // 附加进程。
 bool RemoteProcess::Attach() {
 	if ( ptrace( PTRACE_ATTACH, mPid, NULL, 0  ) < 0 ) {
@@ -324,7 +326,7 @@ bool RemoteProcess::GetRegs(struct pt_regs* regs) {
 }
 
 // 设置寄存器信息。
-bool RemoteProcess::SetRegs(IN struct pt_regs* regs) {
+bool RemoteProcess::SetRegs(struct pt_regs* regs) {
 	if (ptrace(PTRACE_SETREGS, mPid, NULL, regs) < 0) {
 		//perror( "ptrace_setregs: Can not set register values" );
 		MY_LOG_WARNING("[-] RemoteProcess::setRegs(pid_t,pt_regs*), 未能设置寄存器的值: %s", strerror(errno));
@@ -397,6 +399,110 @@ _ret:
 	return bRet;
 }
 
+// 分配远程内存。
+bool RemoteProcess::Alloc(size_t length, int prot, RemoteMemory* remoteMemory) {
+	if (NULL == remoteMemory) {
+		MY_LOG_WARNING("[-] Free(RemoteMemory*) - 参数remoteMemory为NULL。");
+		return false;
+	}
+
+	void* result_mmap = NULL;
+	void* p_mmap;
+	p_mmap = GetRemoteAddress(mPid, "/system/lib/libc.so", "mmap");
+	if (NULL == p_mmap) {
+		p_mmap = GetRemoteAddress(mPid, (void*) mmap);
+	}
+
+	if (NULL == p_mmap) {
+		MY_LOG_WARNING("[-] Alloc(size_t, int) - 获得进程'%d'中函数mmap的地址失败。", mPid);
+		return false;
+	}
+
+	struct pt_regs regs;
+	long parameters_mmap[6];
+
+	parameters_mmap[0] = (long)NULL;
+	parameters_mmap[1] = length;
+	parameters_mmap[2] = prot;
+	parameters_mmap[3] = MAP_ANONYMOUS | MAP_PRIVATE;
+	parameters_mmap[4] = -1;
+	parameters_mmap[5] = 0;
+
+	// 远程调用mmap，在远程进程中分配内存。
+	if (false == Call(p_mmap, parameters_mmap, array_size(parameters_mmap), &regs)) {
+		MY_LOG_WARNING("[-] Alloc(size_t, int) - 远程调用mmap失败。");
+	} else {
+		result_mmap = (void*) regs.ARM_r0;
+	}
+
+	if (NULL == result_mmap) {
+		MY_LOG_WARNING("[-] Alloc(size_t, int) - mmap函数执行失败。");
+		return false;
+	} else {
+		remoteMemory->length = length;
+		remoteMemory->addr = result_mmap;
+		return true;
+	}
+}
+
+// 释放远程内存。
+bool RemoteProcess::FreeData(RemoteMemory* remoteMemory) {
+	if (NULL == remoteMemory || NULL == remoteMemory->addr || 0 == remoteMemory->length) {
+		MY_LOG_WARNING("[-] Free(RemoteMemory*) - 参数remoteMemory不正确。");
+		return false;
+	}
+
+	bool bRet = false;
+	//void* p_munmap = GetRemoteAddress(mPid, "/system/lib/libc.so", (void*) munmap);
+	void* p_munmap = GetRemoteAddress(mPid, (void*) munmap);
+	if (NULL == p_munmap) {
+		MY_LOG_WARNING("[-] Free(RemoteMemory*) - 获得进程'%d'中函数munmap的地址失败。", mPid);
+		return false;
+	}
+	struct pt_regs regs;
+	long parameters_munmap[2];
+
+	parameters_munmap[0] = (long)remoteMemory->addr;
+	parameters_munmap[1] = remoteMemory->length;
+
+	// 远程调用munmap，在远程进程中分配内存。
+	if (false == Call(p_munmap, parameters_munmap, 2, &regs)) {
+		MY_LOG_WARNING("[-] Free(RemoteMemory*) - 远程调用munmap失败。addr = %p。", remoteMemory->addr);
+	} else {
+		int ret = regs.ARM_r0;
+		if (0 == ret) {
+			bRet = true;
+			remoteMemory->clear();
+		} else {
+			MY_LOG_WARNING("[-] Free(RemoteMemory*) - munmap执行失败。parameters_munmap[0]=%p。", (void*)(parameters_munmap[0]));
+		}
+	}
+
+	return bRet;
+}
+
+// 向进程中写入数据。
+bool RemoteProcess::WriteBytes(uint8_t *data, size_t size, RemoteMemory* out) {
+	return WriteBytes(data, size, PROT_READ | PROT_WRITE, out);
+}
+
+// 向进程中写入数据。
+bool RemoteProcess::WriteBytes(uint8_t *data, size_t size, int prot, RemoteMemory* out) {
+	RemoteMemory rm;
+	if (false == Alloc(size, prot, &rm)) {
+		MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, size_t, RemoteMemory*) - 分配远程内存失败。");
+		return false;
+	}
+	// 将数据写入远程进程。
+	if (WriteBytes((uint8_t *)rm.addr, data, size)) {
+		out->length = rm.length;
+		out->addr = rm.addr;
+		return true;
+	} else {
+		return false;
+	}
+}
+
 // 向进程中写入数据。
 bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 	uint32_t i, j, remain;
@@ -449,7 +555,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 }
 
 // 远程调用dlopen函数。
-void* RemoteProcess::remote_dlopen(IN const char * pathname, IN int mode) {
+void* RemoteProcess::remote_dlopen(const char * pathname, int mode) {
 	void* p_remote_dlopen = GetRemoteAddress(mPid, (void*) dlopen);
 	if (NULL == p_remote_dlopen) {
 		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - " 

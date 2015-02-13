@@ -89,7 +89,11 @@ ModuleList::Entry* ModuleList::Iterator::next(OUT ModuleList::Entry* entry) {
 			if (' ' == ch) {
 				char *endptr = (char*)((uint8_t*)filePoint - 1);
 				*endptr = '\0';
-				entry->pagePerms = (char*)cursor;
+
+				char *tmp = (char*) calloc(strlen((const char*)cursor) + 1, sizeof(char));
+				strcpy(tmp, (const char*)cursor);
+				entry->pagePerms = tmp;
+
 				*endptr = ' ';
 				break;
 			}
@@ -115,7 +119,12 @@ ModuleList::Entry* ModuleList::Iterator::next(OUT ModuleList::Entry* entry) {
 			if (' ' == ch) {
 				char *endptr = (char*)((uint8_t*)filePoint - 1);
 				*endptr = '\0';
-				entry->dev = (char*)cursor;
+				//entry->dev = (char*)cursor;
+
+				char *tmp = (char*) calloc(strlen((const char*)cursor) + 1, sizeof(char));
+				strcpy(tmp, (const char*)cursor);
+				entry->dev = tmp;
+
 				*endptr = ' ';
 				break;
 			}
@@ -149,9 +158,12 @@ ModuleList::Entry* ModuleList::Iterator::next(OUT ModuleList::Entry* entry) {
 			}
 		}
 		if ('\0' == *(char*)nameStart) {
-			entry->name = "";
+			//entry->name = "";
 		} else {
-			entry->name = (char*)nameStart;
+			//entry->name = (char*)nameStart;
+			char *tmp = (char*) calloc(strlen((const char*)nameStart) + 1, sizeof(char));
+			strcpy(tmp, (const char*)nameStart);
+			entry->name = tmp;
 		}
 	}
 
@@ -190,7 +202,7 @@ bool ModuleList::Iterator::setPid(pid_t pid) {
 //////////////////////////////////////////////////////////////////////////
 
 // 获得地址所在的模块名。
-std::string GetModuleName (pid_t pid, void* addr) {
+lsp<char> GetModuleName (pid_t pid, void* addr) {
 	ModuleList moduleList;
 	ModuleList::Iterator* iterator = moduleList.iterator(pid);
 	ModuleList::Entry entry;
@@ -201,7 +213,7 @@ std::string GetModuleName (pid_t pid, void* addr) {
 		// 		MY_LOG_INFO("my = %08x-%08x %s %08x %s %d |%s|", 
 		// 			entry.start, entry.end, entry.pagePerms.c_str(), entry.offset, entry.dev.c_str(), entry.inode, entry.name.c_str());
 	}
-	return "";
+	return lsp<char>();
 }
 
 // 通过模块名获得模块基址。
