@@ -13,6 +13,7 @@ LOCAL_SRC_FILES := ./JavaBase.cpp \
 				   ./AndroidUtil.cpp \
 				   ./AndroidContent.cpp \
 				   ./jstring_.cpp \
-				   ./JavaException.cpp
+				   ./JavaException.cpp \
+				   ./ClassLoader.cpp
 
 include $(BUILD_STATIC_LIBRARY)

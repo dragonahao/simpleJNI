@@ -392,6 +392,12 @@ bool RemoteProcess::Call(void *addr, long *params, uint32_t num_params, struct p
 		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 获得寄存信息失败。");
 		goto _ret;
 	}
+
+	// 恢复寄存器的值。
+	if (false == SetRegs(&mOrigReg)) {
+		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 恢复寄存器的值失败。");
+		goto _ret;
+	}
 	bRet = true;
 
 _ret:
