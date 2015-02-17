@@ -9,3 +9,5 @@
  * @return 注入成功，则返回true。注入失败，则返回false。
  */
 bool Inject(pid_t pid, const char* soPath);
+
+int inject_remote_process( pid_t target_pid, const char *library_path, const char *function_name, void *param, size_t param_size );

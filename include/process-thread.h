@@ -65,6 +65,26 @@ void* GetRemoteAddress(pid_t target_pid, const char* modulePath, const char* mod
 
 //////////////////////////////////////////////////////////////////////////
 
+int ptrace_readdata( pid_t pid,  uint8_t *src, uint8_t *buf, size_t size );
+
+int ptrace_writedata( pid_t pid, uint8_t *dest, uint8_t *data, size_t size );
+
+int ptrace_writestring( pid_t pid, uint8_t *dest, char *str  );
+
+int ptrace_call( pid_t pid, uint32_t addr, long *params, uint32_t num_params, struct pt_regs* regs );
+
+int ptrace_getregs( pid_t pid, struct pt_regs* regs );
+
+int ptrace_setregs( pid_t pid, struct pt_regs* regs );
+
+int ptrace_continue( pid_t pid );
+
+int ptrace_attach( pid_t pid );
+
+int ptrace_detach( pid_t pid );
+
+//////////////////////////////////////////////////////////////////////////
+
 /**
  * 远程内存。
  */
@@ -392,5 +412,49 @@ protected:
 // 		void* arg, 
 // 		const size_t arg_size);
 };
+
+// class RemoteProcess {
+// protected:
+// 	pid_t mPid;
+// 	struct pt_regs mOrigReg;
+// 
+// public:
+// 	/**
+// 	 * 构造函数。
+// 	 * @param[in] pid 进程id。
+// 	 */
+// 	RemoteProcess(pid_t pid);
+// 	~RemoteProcess();
+// 
+// 	/**
+// 	 * 附加进程。
+// 	 * @return 附加成功，返回true。附加失败，返回false。
+// 	 * @note 如果附加失败，将输出log。
+// 	 */
+// 	bool Attach();
+// 
+// 	/**
+// 	 * 取消附加进程。
+// 	 * @return 取消附加成功，返回true。取消附加失败，返回false。
+// 	 * @note 如果取消附加失败，将输出log。
+// 	 */
+// 	bool Detach();
+// 
+// protected:
+// 	/**
+// 	 * 获得寄存器信息。
+// 	 * @param[out] regs 返回寄存器信息。
+// 	 * @return 获得成功，则返回true。获得失败，则返回false。
+// 	 */
+// 	bool GetRegs(struct pt_regs* regs);
+// 
+// 	/**
+// 	 * 设置寄存器信息。
+// 	 * @param[in] pid 进程ID。
+// 	 * @param[in] regs 寄存器信息。
+// 	 * @return 获得成功，则返回true。获得失败，则返回false。
+// 	 */
+// 	bool SetRegs(struct pt_regs* regs);
+// };
 
 #endif

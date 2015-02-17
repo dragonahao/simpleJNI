@@ -237,6 +237,205 @@ _ret:
 }
 
 //////////////////////////////////////////////////////////////////////////
+// 
+
+int ptrace_readdata( pid_t pid,  uint8_t *src, uint8_t *buf, size_t size )
+{
+	uint32_t i, j, remain;
+	uint8_t *laddr;
+
+	union u {
+		long val;
+		char chars[sizeof(long)];
+	} d;
+
+	j = size / 4;
+	remain = size % 4;
+
+	laddr = buf;
+
+	for ( i = 0; i < j; i ++ )
+	{
+		d.val = ptrace( PTRACE_PEEKTEXT, pid, src, 0 );
+		memcpy( laddr, d.chars, 4 );
+		src += 4;
+		laddr += 4;
+	}
+
+	if ( remain > 0 )
+	{
+		d.val = ptrace( PTRACE_PEEKTEXT, pid, src, 0 );
+		memcpy( laddr, d.chars, remain );
+	}
+
+	return 0;
+
+}
+
+int ptrace_writedata( pid_t pid, uint8_t *dest, uint8_t *data, size_t size )
+{
+	uint32_t i, j, remain;
+	uint8_t *laddr;
+
+	union u {
+		long val;
+		char chars[sizeof(long)];
+	} d;
+
+	j = size / 4;
+	remain = size % 4;
+
+	laddr = data;
+
+	for ( i = 0; i < j; i ++ )
+	{
+		memcpy( d.chars, laddr, 4 );
+		ptrace( PTRACE_POKETEXT, pid, dest, d.val );
+
+		dest  += 4;
+		laddr += 4;
+	}
+
+	if ( remain > 0 )
+	{
+		d.val = ptrace( PTRACE_PEEKTEXT, pid, dest, 0 );
+		for ( i = 0; i < remain; i ++ )
+		{
+			d.chars[i] = *laddr ++;
+		}
+
+		ptrace( PTRACE_POKETEXT, pid, dest, d.val );
+
+	}
+
+	return 0;
+}
+
+
+int ptrace_writestring( pid_t pid, uint8_t *dest, char *str  )
+{
+	return ptrace_writedata( pid, dest, (uint8_t*)str, strlen(str)+1 );
+}
+
+int ptrace_call( pid_t pid, uint32_t addr, long *params, uint32_t num_params, struct pt_regs* regs )
+{
+	uint32_t i;
+
+	for ( i = 0; i < num_params && i < 4; i ++ )
+	{
+		regs->uregs[i] = params[i];
+	}
+
+	//
+	// push remained params onto stack
+	//
+	if ( i < num_params )
+	{
+		regs->ARM_sp -= (num_params - i) * sizeof(long) ;
+		ptrace_writedata( pid, (uint8_t*)regs->ARM_sp, (uint8_t *)&params[i], (num_params - i) * sizeof(long) );
+	}
+
+	regs->ARM_pc = addr;
+	if ( regs->ARM_pc & 1 )
+	{
+		/* thumb */
+		regs->ARM_pc &= (~1u);
+		regs->ARM_cpsr |= CPSR_T_MASK;
+	}
+	else
+	{
+		/* arm */
+		regs->ARM_cpsr &= ~CPSR_T_MASK;
+	}
+
+
+	regs->ARM_lr = 0;	
+
+	if ( ptrace_setregs( pid, regs ) == -1 
+		|| ptrace_continue( pid ) == -1 )
+	{
+		MY_LOG_WARNING("[-] ptrace_call - 远程调用失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+
+	waitpid( pid, NULL, WUNTRACED );
+
+	return 0;
+}
+
+
+
+int ptrace_getregs( pid_t pid, struct pt_regs* regs )
+{
+	if ( ptrace( PTRACE_GETREGS, pid, NULL, regs ) < 0 )
+	{
+		MY_LOG_WARNING("[-] ptrace_getregs - 获得寄存器值失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+int ptrace_setregs( pid_t pid, struct pt_regs* regs )
+{
+	if ( ptrace( PTRACE_SETREGS, pid, NULL, regs ) < 0 )
+	{
+		MY_LOG_WARNING("[-] ptrace_setregs - 设置寄存器值失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+int ptrace_continue( pid_t pid )
+{
+	if ( ptrace( PTRACE_CONT, pid, NULL, 0 ) < 0 )
+	{
+		MY_LOG_WARNING("[-] ptrace_continue - PTRACE_CONT失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+int ptrace_attach( pid_t pid )
+{
+	if ( ptrace( PTRACE_ATTACH, pid, NULL, 0  ) < 0 )
+	{
+		MY_LOG_WARNING("[-] ptrace_attach - 附加进程失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+	waitpid( pid, NULL, WUNTRACED );
+
+	//DEBUG_PRINT("attached\n");
+
+	if ( ptrace( PTRACE_SYSCALL, pid, NULL, 0  ) < 0 )
+	{
+		MY_LOG_WARNING("[-] ptrace_attach - PTRACE_SYSCALL失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+
+
+	waitpid( pid, NULL, WUNTRACED );
+
+	return 0;
+}
+
+int ptrace_detach( pid_t pid )
+{
+	if ( ptrace( PTRACE_DETACH, pid, NULL, 0 ) < 0 )
+	{
+		MY_LOG_WARNING("[-] ptrace_detach - 结束附加进程失败。code=%d: %s。", errno, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////
 // 远程内存。
 
 RemoteMemory::RemoteMemory() : length(0), addr(NULL) {}
@@ -265,7 +464,7 @@ RemoteProcess::~RemoteProcess(){}
 // 附加进程。
 bool RemoteProcess::Attach() {
 	if ( ptrace( PTRACE_ATTACH, mPid, NULL, 0  ) < 0 ) {
-		MY_LOG_WARNING("[-] RemoteProcess::Attach(), PTRACE_ATTACH: %s", strerror(errno));
+		MY_LOG_WARNING("[-] RemoteProcess::Attach() - PTRACE_ATTACH。code=%d: %s。", errno, strerror(errno));
 		return false;
 	}
 
@@ -274,7 +473,7 @@ bool RemoteProcess::Attach() {
 	//DEBUG_PRINT("attached\n");
 
 	if ( ptrace( PTRACE_SYSCALL, mPid, NULL, 0  ) < 0 ) {
-		MY_LOG_WARNING("[-] RemoteProcess::Attach(), PTRACE_SYSCALL: %s", strerror(errno));
+		MY_LOG_WARNING("[-] RemoteProcess::Attach() - PTRACE_SYSCALL。code=%d: %s。", errno, strerror(errno));
 		return false;
 	}
 
@@ -291,11 +490,11 @@ bool RemoteProcess::Attach() {
 
 // 取消附加进程。
 bool RemoteProcess::Detach() {
-	SetRegs(&mOrigReg);
+	if (!SetRegs(&mOrigReg)) {
+		MY_LOG_WARNING("[-] RemoteProcess::Detach() - 设置寄存器失败。");
+	}
 	if (ptrace(PTRACE_DETACH, mPid, NULL, 0) < 0) {
-		//perror( "ptrace_detach" );
-		MY_LOG_WARNING("[-] RemoteProcess::detach(pid_t): pid=%d, code=%d: %s\n",
-			mPid, errno, strerror(errno));
+		MY_LOG_WARNING("[-] RemoteProcess::Detach() - pid=%d。code=%d: %s。", mPid, errno, strerror(errno));
 		return false;
 	}
 
@@ -305,8 +504,7 @@ bool RemoteProcess::Detach() {
 // 暂停的进程继续运行。
 bool RemoteProcess::Cont() {
 	if (ptrace(PTRACE_CONT, mPid, NULL, 0) < 0) {
-		//perror( "ptrace_cont" );
-		MY_LOG_WARNING("[-] RemoteProcess::cont(pid_t): %s", strerror(errno));
+		MY_LOG_WARNING("[-] RemoteProcess::Cont() - code=%d: %s", errno, strerror(errno));
 		return false;
 	}
 
@@ -317,8 +515,7 @@ bool RemoteProcess::Cont() {
 bool RemoteProcess::GetRegs(struct pt_regs* regs) {
 	if ( ptrace( PTRACE_GETREGS, mPid, NULL, regs ) < 0 )
 	{
-		MY_LOG_WARNING("[-] RemoteProcess::getRegs(pid_t,pt_regs*), 无法获取寄存器的值: %s",
-			strerror(errno));
+		MY_LOG_WARNING("[-] RemoteProcess::getRegs(pt_regs*) - 获得寄存器值失败。code=%d: %s。", errno, strerror(errno));
 		return -1;
 	}
 
@@ -328,8 +525,7 @@ bool RemoteProcess::GetRegs(struct pt_regs* regs) {
 // 设置寄存器信息。
 bool RemoteProcess::SetRegs(struct pt_regs* regs) {
 	if (ptrace(PTRACE_SETREGS, mPid, NULL, regs) < 0) {
-		//perror( "ptrace_setregs: Can not set register values" );
-		MY_LOG_WARNING("[-] RemoteProcess::setRegs(pid_t,pt_regs*), 未能设置寄存器的值: %s", strerror(errno));
+		MY_LOG_WARNING("[-] RemoteProcess::SetRegs(pt_regs*) - 设置寄存器值失败。code=%d: %s。", errno, strerror(errno));
 		return false;
 	}
 
@@ -355,8 +551,9 @@ bool RemoteProcess::Call(void *addr, long *params, uint32_t num_params, struct p
 		//MY_LOG_INFO("1. destRegs.ARM_sp=%p", destRegs.ARM_sp);
 		//ptrace_writedata( pid, (void *)destRegs.ARM_sp, (uint8_t *)&params[i], (num_params - i) * sizeof(long) );
 		// 将参数写入栈空间。
-		WriteBytes((uint8_t *) destRegs.ARM_sp, (uint8_t *) &params[i],
-			(num_params - i) * sizeof(long));
+		if (!WriteBytes((uint8_t *) destRegs.ARM_sp, (uint8_t *) &params[i], (num_params - i) * sizeof(long))) {
+			MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 向远程进程写参数失败。");
+		}
 	}
 
 	destRegs.ARM_pc = (long) addr; // 设置代码执行的起始地址。
@@ -378,13 +575,16 @@ bool RemoteProcess::Call(void *addr, long *params, uint32_t num_params, struct p
 
 	// 设置寄存器，并执行函数。
 	if (false == SetRegs(&destRegs)) {
+		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 设置寄存器失败。");
 		goto _ret;
 	}
 	if (false == Cont()) {
+		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 继续失败。");
 		goto _ret;
 	}
 	waitpid(mPid, NULL, WUNTRACED);
 	if (false == GetRegs(regs)) {
+		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 获得寄存信息失败。");
 		goto _ret;
 	}
 	bRet = true;
@@ -402,7 +602,7 @@ _ret:
 // 分配远程内存。
 bool RemoteProcess::Alloc(size_t length, int prot, RemoteMemory* remoteMemory) {
 	if (NULL == remoteMemory) {
-		MY_LOG_WARNING("[-] Free(RemoteMemory*) - 参数remoteMemory为NULL。");
+		MY_LOG_WARNING("[-] Alloc(size_t, int, RemoteMemory*) - 参数remoteMemory为NULL。");
 		return false;
 	}
 
@@ -414,7 +614,7 @@ bool RemoteProcess::Alloc(size_t length, int prot, RemoteMemory* remoteMemory) {
 	}
 
 	if (NULL == p_mmap) {
-		MY_LOG_WARNING("[-] Alloc(size_t, int) - 获得进程'%d'中函数mmap的地址失败。", mPid);
+		MY_LOG_WARNING("[-] Alloc(size_t, int, RemoteMemory*) - 获得进程'%d'中函数mmap的地址失败。", mPid);
 		return false;
 	}
 
@@ -430,13 +630,13 @@ bool RemoteProcess::Alloc(size_t length, int prot, RemoteMemory* remoteMemory) {
 
 	// 远程调用mmap，在远程进程中分配内存。
 	if (false == Call(p_mmap, parameters_mmap, array_size(parameters_mmap), &regs)) {
-		MY_LOG_WARNING("[-] Alloc(size_t, int) - 远程调用mmap失败。");
+		MY_LOG_WARNING("[-] Alloc(size_t, int, RemoteMemory*) - 远程调用mmap失败。");
 	} else {
 		result_mmap = (void*) regs.ARM_r0;
 	}
 
 	if (NULL == result_mmap) {
-		MY_LOG_WARNING("[-] Alloc(size_t, int) - mmap函数执行失败。");
+		MY_LOG_WARNING("[-] Alloc(size_t, int, RemoteMemory*) - mmap函数执行失败。");
 		return false;
 	} else {
 		remoteMemory->length = length;
@@ -522,7 +722,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 	for (i = 0; i < j; i++) {
 		memcpy(d.chars, laddr, sizeof(long));
 		if (-1 == ptrace(PTRACE_POKETEXT, mPid, dest, (void*) d.val)) {
-			MY_LOG_WARNING("[-] RemoteProcess::Writedata(uint8_t*, uint8_t*, size_t) - 0. 写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
+			MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
 			return false;
 		}
 
@@ -535,7 +735,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 		// 读取数据。
 		d.val = ptrace(PTRACE_PEEKTEXT, mPid, dest, 0);
 		if (errno > 0) {
-			MY_LOG_WARNING("[-] RemoteProcess::Writedata(uint8_t*, uint8_t*, size_t) - 读取long类型数据失败。code=%d: %s。", errno, strerror(errno));
+			MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 读取long类型数据失败。code=%d: %s。", errno, strerror(errno));
 			return false;
 		} else {
 			// 将剩下的字节存入
@@ -545,7 +745,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 			}
 
 			if (-1 == ptrace(PTRACE_POKETEXT, mPid, dest, (void*) d.val)) {
-				MY_LOG_WARNING("[-] RemoteProcess::Writedata(uint8_t*, uint8_t*, size_t) - 1. 写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
+				MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 1. 写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
 				return false;
 			}
 		}
@@ -558,8 +758,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 void* RemoteProcess::remote_dlopen(const char * pathname, int mode) {
 	void* p_remote_dlopen = GetRemoteAddress(mPid, (void*) dlopen);
 	if (NULL == p_remote_dlopen) {
-		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - " 
-			"获得远程进程'%d'中的dlopen函数地址失败。", mPid);
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - 获得远程进程'%d'中的dlopen函数地址失败。", mPid);
 		return NULL;
 	}
 
@@ -595,5 +794,76 @@ void* RemoteProcess::remote_dlopen(const char * pathname, int mode) {
 	}
 	return dl_ret;
 }
+
+// RemoteProcess::RemoteProcess(pid_t pid)
+// 	: mPid(pid)
+// {
+// 	ZeroMemory(&mOrigReg, sizeof(struct pt_regs));
+// }
+// 
+// RemoteProcess::~RemoteProcess(){}
+// 
+// // 附加进程。
+// bool RemoteProcess::Attach() {
+// 	if ( ptrace( PTRACE_ATTACH, mPid, NULL, 0  ) < 0 ) {
+// 		MY_LOG_WARNING("[-] RemoteProcess::Attach(), PTRACE_ATTACH: %s", strerror(errno));
+// 		return false;
+// 	}
+// 
+// 	waitpid( mPid, NULL, WUNTRACED );
+// 
+// 	//DEBUG_PRINT("attached\n");
+// 
+// 	if ( ptrace( PTRACE_SYSCALL, mPid, NULL, 0  ) < 0 ) {
+// 		MY_LOG_WARNING("[-] RemoteProcess::Attach(), PTRACE_SYSCALL: %s", strerror(errno));
+// 		return false;
+// 	}
+// 
+// 	waitpid( mPid, NULL, WUNTRACED );	// 等待目标进程暂停。
+// 
+// 	// 获得原寄存器信息，以供结束时恢复用。
+// 	if (false == GetRegs(&mOrigReg)) {
+// 		MY_LOG_WARNING("[-] RemoteProcess::Attach() - 获得寄存器失败。code=%d: %s。", errno, strerror(errno));
+// 		return false;
+// 	}
+// 
+// 	return true;
+// }
+// 
+// // 取消附加进程。
+// bool RemoteProcess::Detach() {
+// 	SetRegs(&mOrigReg);
+// 	if (ptrace(PTRACE_DETACH, mPid, NULL, 0) < 0) {
+// 		//perror( "ptrace_detach" );
+// 		MY_LOG_WARNING("[-] RemoteProcess::detach(pid_t): pid=%d, code=%d: %s\n",
+// 			mPid, errno, strerror(errno));
+// 		return false;
+// 	}
+// 
+// 	return true;
+// }
+// 
+// // 获得寄存器信息。
+// bool RemoteProcess::GetRegs(struct pt_regs* regs) {
+// 	if ( ptrace( PTRACE_GETREGS, mPid, NULL, regs ) < 0 )
+// 	{
+// 		MY_LOG_WARNING("[-] RemoteProcess::getRegs(pid_t,pt_regs*), 无法获取寄存器的值: %s",
+// 			strerror(errno));
+// 		return -1;
+// 	}
+// 
+// 	return true;
+// }
+// 
+// // 设置寄存器信息。
+// bool RemoteProcess::SetRegs(struct pt_regs* regs) {
+// 	if (ptrace(PTRACE_SETREGS, mPid, NULL, regs) < 0) {
+// 		//perror( "ptrace_setregs: Can not set register values" );
+// 		MY_LOG_WARNING("[-] RemoteProcess::setRegs(pid_t,pt_regs*), 未能设置寄存器的值: %s", strerror(errno));
+// 		return false;
+// 	}
+// 
+// 	return true;
+// }
 
 #endif
