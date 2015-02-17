@@ -263,9 +263,17 @@ public:
 	/**
 	 * 远程调用dlclose函数。
 	 * @param[in] handle 动态库句柄。
-	 * @return 如果调用成功，则返回0。调用失败，则返回非零值，是一个错误号。
+	 * @return 如果调用成功，则返回0。如果调用失败，则返回一个非零值。
 	 */
-	//int remote_dlclose (void *handle);
+	int remote_dlclose (void *handle);
+
+	/**
+	 * 远程调用dlsym函数。
+	 * @param[in] handle 动态库句柄。
+	 * @param[in] symbol 符号名。
+	 * @return 如果调用成功，则返回函数地址。如果调用失败，则返回NULL。
+	 */
+	void* remote_dlsym(void* handle, const char* symbol);
 
 	/**
 	 * 同步创建远程线程。

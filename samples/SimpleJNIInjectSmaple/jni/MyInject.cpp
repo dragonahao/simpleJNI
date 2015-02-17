@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <process-thread.h>
 #include <hack/Inject.h>
+#include <sys/ptrace.h>
 
 /**
  * 程序接收两个参数：
@@ -25,6 +26,11 @@ int main(int argc, char *argv[]) {
 // 		MY_LOG_WARNING("[-] 注入程序 - 注入失败！");
 // 		return -1;
 // 	}
-	inject_remote_process( pid, argv[2], "hook_entry", (void*)"I'm parameter!", strlen("I'm parameter!") );
+	struct pt_regs regs;
+	if (!Inject(pid, argv[2], "hook_entry", (void*)"I'm parameter!", strlen("I'm parameter!") + 1, &regs)) {
+		MY_LOG_WARNING("[-] 注入程序 - 注入失败！");
+		return -1;
+	}
+	//inject_remote_process( pid, argv[2], "hook_entry", (void*)"I'm parameter!", strlen("I'm parameter!") );
 	return 0;
 }

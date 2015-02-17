@@ -11,3 +11,4 @@
 #include <dlfcn.h>
 #include <process-thread.h>
 #include <sys/mman.h>
+#include <CommDef.h>

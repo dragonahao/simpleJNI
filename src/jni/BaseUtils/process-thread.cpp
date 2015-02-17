@@ -290,7 +290,9 @@ int ptrace_writedata( pid_t pid, uint8_t *dest, uint8_t *data, size_t size )
 	for ( i = 0; i < j; i ++ )
 	{
 		memcpy( d.chars, laddr, 4 );
-		ptrace( PTRACE_POKETEXT, pid, dest, d.val );
+		if (-1 == ptrace( PTRACE_POKETEXT, pid, dest, d.val )) {
+			MY_LOG_WARNING("[-] ptrace_writedata - 写入数据失败。code=%d: %s。", errno, strerror(errno));
+		}
 
 		dest  += 4;
 		laddr += 4;
@@ -493,6 +495,7 @@ bool RemoteProcess::Detach() {
 	if (!SetRegs(&mOrigReg)) {
 		MY_LOG_WARNING("[-] RemoteProcess::Detach() - 设置寄存器失败。");
 	}
+	//MY_LOG_INFO("[*] Detach - 将要取消附加进程。");
 	if (ptrace(PTRACE_DETACH, mPid, NULL, 0) < 0) {
 		MY_LOG_WARNING("[-] RemoteProcess::Detach() - pid=%d。code=%d: %s。", mPid, errno, strerror(errno));
 		return false;
@@ -533,10 +536,81 @@ bool RemoteProcess::SetRegs(struct pt_regs* regs) {
 }
 
 // 在远程进程中调用函数。
+// bool RemoteProcess::Call(void *addr, long *params, uint32_t num_params, struct pt_regs* regs) {
+// 	bool bRet = false;
+// 	uint32_t i;
+// 	struct pt_regs destRegs = {0};
+// 
+// 	// 将参数依次放入寄存器中。
+// 	// 由于arm cpu的特性，寄存器的前4个可以放入4个参数。
+// 	for (i = 0; i < num_params && i < 4; i++) {
+// 		destRegs.uregs[i] = params[i];
+// 	}
+// 	//MY_LOG_INFO("0. origRegs.ARM_sp=%p", origRegs.ARM_sp);
+// 	// 将超过4个的参数放入堆栈中。
+// 	if (i < num_params) {
+// 		//MY_LOG_INFO("0. destRegs.ARM_sp=%p", destRegs.ARM_sp);
+// 		destRegs.ARM_sp -= (num_params - i) * sizeof(long); // 分配栈空间。
+// 		//MY_LOG_INFO("1. destRegs.ARM_sp=%p", destRegs.ARM_sp);
+// 		//ptrace_writedata( pid, (void *)destRegs.ARM_sp, (uint8_t *)&params[i], (num_params - i) * sizeof(long) );
+// 		// 将参数写入栈空间。
+// 		if (!WriteBytes((uint8_t *) destRegs.ARM_sp, (uint8_t *) &params[i], (num_params - i) * sizeof(long))) {
+// 			MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 向远程进程写参数失败。");
+// 		}
+// 	}
+// 
+// 	destRegs.ARM_pc = (long) addr; // 设置代码执行的起始地址。
+// 
+// 	// 判断是thumb指令还是arm指令。
+// 	// CPSR_T_MASK解释：
+// 	// 对于ARM体系结构v5及以上的版本的T系列处理器，当该位为1时，程序运行于Thumb状态，否则运行于ARM状态。
+// 	// 对于ARM体系结构v5及以上的版本的非T系列处理器，当该位为1时，执行下一条指令以引起为定义的指令异常；当该位为0时，表示运行于ARM状态。
+// 	if (destRegs.ARM_pc & 1) {
+// 		/* thumb */
+// 		destRegs.ARM_pc &= (~1u); // thumb指令是以2字节对齐的。
+// 		destRegs.ARM_cpsr |= CPSR_T_MASK;
+// 	} else {
+// 		/* arm */
+// 		destRegs.ARM_cpsr &= ~CPSR_T_MASK;
+// 	}
+// 
+// 	destRegs.ARM_lr = 0;
+// 
+// 	// 设置寄存器，并执行函数。
+// 	if (false == SetRegs(&destRegs)) {
+// 		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 设置寄存器失败。");
+// 		goto _ret;
+// 	}
+// 	if (false == Cont()) {
+// 		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 继续失败。");
+// 		goto _ret;
+// 	}
+// 	waitpid(mPid, NULL, WUNTRACED);
+// 	if (false == GetRegs(regs)) {
+// 		MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 获得寄存信息失败。");
+// 		goto _ret;
+// 	}
+// 	bRet = true;
+// 
+// _ret:
+// 	//MY_LOG_INFO("1. origRegs.ARM_sp=%p", origRegs.ARM_sp);
+// 	//SetRegs(&origRegs);
+// 
+// 	//struct pt_regs checkRegs;
+// 	//GetRegs(&checkRegs);
+// 	//MY_LOG_INFO("checkRegs.ARM_sp=%p", checkRegs.ARM_sp);
+// 	return bRet;
+// }
+
 bool RemoteProcess::Call(void *addr, long *params, uint32_t num_params, struct pt_regs* regs) {
 	bool bRet = false;
 	uint32_t i;
-	struct pt_regs destRegs = {0};
+	struct pt_regs destRegs;
+
+	// 需要在原寄存器基础上操作，如果不这样，ptrace将会出问题。
+	// 原来的代码是：struct pt_regs destRegs = {0}; 没有在原寄存器的基础上操作，所以ptrace出错了。
+	// 这里对原寄存器拷贝一份是因为要保护原寄存器中的内容，以供以后恢复。
+	memcpy(&destRegs, &mOrigReg, sizeof(struct pt_regs));
 
 	// 将参数依次放入寄存器中。
 	// 由于arm cpu的特性，寄存器的前4个可以放入4个参数。
@@ -549,7 +623,6 @@ bool RemoteProcess::Call(void *addr, long *params, uint32_t num_params, struct p
 		//MY_LOG_INFO("0. destRegs.ARM_sp=%p", destRegs.ARM_sp);
 		destRegs.ARM_sp -= (num_params - i) * sizeof(long); // 分配栈空间。
 		//MY_LOG_INFO("1. destRegs.ARM_sp=%p", destRegs.ARM_sp);
-		//ptrace_writedata( pid, (void *)destRegs.ARM_sp, (uint8_t *)&params[i], (num_params - i) * sizeof(long) );
 		// 将参数写入栈空间。
 		if (!WriteBytes((uint8_t *) destRegs.ARM_sp, (uint8_t *) &params[i], (num_params - i) * sizeof(long))) {
 			MY_LOG_WARNING("[-] Call(void*, long*, uint32_t, struct pt_regs*) - 向远程进程写参数失败。");
@@ -722,7 +795,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 	for (i = 0; i < j; i++) {
 		memcpy(d.chars, laddr, sizeof(long));
 		if (-1 == ptrace(PTRACE_POKETEXT, mPid, dest, (void*) d.val)) {
-			MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
+			MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 0.写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
 			return false;
 		}
 
@@ -745,7 +818,7 @@ bool RemoteProcess::WriteBytes(uint8_t *dest, uint8_t *data, size_t size) {
 			}
 
 			if (-1 == ptrace(PTRACE_POKETEXT, mPid, dest, (void*) d.val)) {
-				MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 1. 写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
+				MY_LOG_WARNING("[-] RemoteProcess::WriteBytes(uint8_t*, uint8_t*, size_t) - 1.写入long类型数据失败。code=%d: %s。", errno, strerror(errno));
 				return false;
 			}
 		}
@@ -765,33 +838,89 @@ void* RemoteProcess::remote_dlopen(const char * pathname, int mode) {
 	// 	std::string moduleName = AddressModuleName(-1, (void*)dlopen);
 	// 	MY_LOG_INFO("RemoteProcess::remote_dlopen(const char*, int) - p_remote_dlopen=%p, moduleName=%s", p_remote_dlopen, moduleName.c_str());
 
-	RemoteMemory ra_pathname;
-	if (false == WriteBytes((uint8_t*)pathname, strlen(pathname) + 1, &ra_pathname)) {
+	RemoteMemory rm_pathname;
+	if (false == WriteBytes((uint8_t*)pathname, strlen(pathname) + 1, &rm_pathname)) {
 		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - 将动态库地址写入目标进程失败。");
 		return NULL;
 	}
 
 	// 	char* pStr = (char*)calloc(strlen(pathname) + 1, sizeof(char));
-	// 	ReadData((uint8_t*)ra_pathname.addr, (uint8_t*)pStr, strlen(pathname) + 1);
+	// 	ReadData((uint8_t*)rm_pathname.addr, (uint8_t*)pStr, strlen(pathname) + 1);
 	// 	MY_LOG_INFO("RemoteProcess::remote_dlopen(const char *, int) - pStr=|%s|", pStr);
 	// 	free(pStr);
 
 	void* dl_ret = NULL;
 	struct pt_regs regs;
 	long params[2];
-	params[0] = (long) (ra_pathname.addr);
+	params[0] = (long) (rm_pathname.addr);
 	params[1] = mode;
 
 	// 调用dlopen。
 	if (false == Call(p_remote_dlopen, params, array_size(params), &regs)) {
-		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - 远程调用remote_dlopen失败。");
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - 远程调用dlopen失败。");
 	}
 
 	dl_ret = (void*)regs.ARM_r0;
 
-	if (false == FreeData(&ra_pathname)) {
+	if (false == FreeData(&rm_pathname)) {
 		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - 释放远程内存失败。");
 	}
+	return dl_ret;
+}
+
+// 远程调用dlclose函数。
+int RemoteProcess::remote_dlclose (void *handle) {
+	void* p_remote_dlclose = GetRemoteAddress(mPid, (void*) dlclose);
+	if (NULL == p_remote_dlclose) {
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlclose (void*) - 获得远程进程'%d'中的dlclose函数地址失败。", mPid);
+		return -1;
+	}
+
+	int dl_ret = -1;
+	struct pt_regs regs;
+	long params[1];
+
+	params[0] = (long)handle;
+	// 调用dlclose。
+	if (false == Call(p_remote_dlclose, params, array_size(params), &regs)) {
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlopen(const char *, int) - 远程调用dlclose失败。");
+	}
+	dl_ret = (int)regs.ARM_r0;
+
+	return dl_ret;
+}
+
+// 远程调用dlsym函数。
+void* RemoteProcess::remote_dlsym(void* handle, const char* symbol) {
+	void* p_remote_dlsym = GetRemoteAddress(mPid, (void*) dlsym);
+	if (NULL == p_remote_dlsym) {
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlsym (void*, const char*) - 获得远程进程'%d'中的dlsym函数地址失败。", mPid);
+		return NULL;
+	}
+
+	RemoteMemory rm_symbolname;
+	if (false == WriteBytes((uint8_t*)symbol, strlen(symbol) + 1, &rm_symbolname)) {
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlsym (void*, const char*) - 将符号名写入目标进程失败。");
+		return NULL;
+	}
+
+	void* dl_ret = NULL;
+	struct pt_regs regs;
+	long params[2];
+	params[0] = (long) handle;
+	params[1] = (long) (rm_symbolname.addr);
+
+	// 调用dlsym。
+	if (false == Call(p_remote_dlsym, params, array_size(params), &regs)) {
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlsym (void*, const char*) - 远程调用dlsym失败。");
+	}
+
+	dl_ret = (void*)regs.ARM_r0;
+
+	if (false == FreeData(&rm_symbolname)) {
+		MY_LOG_WARNING("[-] RemoteProcess::remote_dlsym (void*, const char*) - 释放远程内存失败。");
+	}
+
 	return dl_ret;
 }
 
