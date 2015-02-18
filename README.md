@@ -25,7 +25,7 @@ libHack
 =========
 include: 头文件。  
 lib: 动态库、静态库、jar包。  
-samples: 例子。  
+examples: 例子。  
 src: C/C++源码、Java源码。
 
 工具的使用

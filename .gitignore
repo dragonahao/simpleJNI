@@ -1,16 +1,16 @@
 /src/obj/
 
-/samples/SimpleJNIJNIJavaSample/obj/
-/samples/SimpleJNIJNIJavaSample/libs/
-/samples/SimpleJNIJNIJavaSample/target/
-/samples/SimpleJNIJNIJavaSample/bin/
+/examples/SimpleJNIJNIJavaExample/obj/
+/examples/SimpleJNIJNIJavaExample/libs/
+/examples/SimpleJNIJNIJavaExample/target/
+/examples/SimpleJNIJNIJavaExample/bin/
 
-/samples/SimpleJNIHookSmaple/obj/
-/samples/SimpleJNIHookSmaple/libs/
-/samples/SimpleJNIHookSmaple/target/
-/samples/SimpleJNIHookSmaple/bin/
+/examples/SimpleJNIHookExample/obj/
+/examples/SimpleJNIHookExample/libs/
+/examples/SimpleJNIHookExample/target/
+/examples/SimpleJNIHookExample/bin/
 
-/samples/SimpleJNIInjectSmaple/obj/
-/samples/SimpleJNIInjectSmaple/libs/
-/samples/SimpleJNIInjectSmaple/target/
-/samples/SimpleJNIInjectSmaple/bin/
+/examples/SimpleJNIInjectExample/obj/
+/examples/SimpleJNIInjectExample/libs/
+/examples/SimpleJNIInjectExample/target/
+/examples/SimpleJNIInjectExample/bin/
